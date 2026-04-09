@@ -211,7 +211,7 @@ The current structure serves as a foundation for future implementation and expan
 
 ---
 
-## Build Steps: 1
+## Phase 1: Simple Application Setup
 
 To start the FastAPI application for development with auto-reload enabled, run:
 
@@ -233,3 +233,38 @@ Once the server is running, you can verify that the API is responding correctly 
   "service": "memoraweave-api"
 }
 ```
+
+---
+
+## Phase 2: Application Database Schema
+
+In this phase, we focus on setting up the database tables for the application's UI and chat history. This is separate from LangGraph's internal persistence and serves as the source of truth for the product history.
+
+### Target Architecture
+
+We implement three core tables:
+
+1.  **`app.chat_threads`**: Stores the list of conversation threads (useful for sidebars).
+2.  **`app.chat_messages`**: Stores the full chat transcript.
+3.  **`app.chat_events`**: Logs granular execution events (tool calls, streaming chunks, errors).
+
+### SQL Initialization
+
+The schema is defined in `app/db/sql/001_init_app_chat.sql`.
+
+#### Schema Highlights
+
+*   **Thread-based**: All messages and events are linked to a unique `thread_id`.
+*   **Logical Turns**: Messages are grouped by `turn_id` to handle complex interactions (user input -> multiple tools -> assistant response) as a single unit.
+*   **Separation of Concerns**: Events are kept in a separate table to keep the UI's message history clean and efficient.
+
+### Running the SQL
+
+To initialize the schema in your local PostgreSQL instance, you can use the following command:
+
+```bash
+psql "postgresql://postgres:postgres@localhost:5432/memoraweave" -f app/db/sql/001_init_app_chat.sql
+```
+
+> [!NOTE]
+> Ensure your PostgreSQL service is running and the database `memoraweave` exists before running the command.
