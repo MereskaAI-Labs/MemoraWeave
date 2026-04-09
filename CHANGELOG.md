@@ -9,6 +9,12 @@ All notable changes to the **MemoraWeave** project will be documented in this fi
 
 --
 
+## [0.1.2] - 2026-04-09
+### Added
+- Comprehensive `.gitignore` for Python and environment variables.
+### Changed
+- Refined README documentation for FastAPI service (Quick Start).
+
 ## [0.1.1] - 2026-04-08
 ### Added
 - Project description to README.

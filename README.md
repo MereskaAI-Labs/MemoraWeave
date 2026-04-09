@@ -208,3 +208,28 @@ Built and maintained by **MereskaAI**.
 
 This repository is currently in an **early development phase**.
 The current structure serves as a foundation for future implementation and expansion.
+
+---
+
+## Build Steps: 1
+
+To start the FastAPI application for development with auto-reload enabled, run:
+
+```bash
+uvicorn app.main:app --reload
+```
+
+### Verifying the Installation
+
+Once the server is running, you can verify that the API is responding correctly by visiting the health check endpoint:
+
+* **Endpoint**: [http://127.0.0.1:8000/api/v1/health](http://127.0.0.1:8000/api/v1/health)
+
+**Expected Response:**
+
+```json
+{
+  "status": "ok",
+  "service": "memoraweave-api"
+}
+```
