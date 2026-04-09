@@ -267,4 +267,20 @@ psql "postgresql://postgres:postgres@localhost:5432/memoraweave" -f app/db/sql/0
 ```
 
 > [!NOTE]
-> Ensure your PostgreSQL service is running and the database `memoraweave` exists before running the command.
+> Ensure your PostgreSQL service is running and the database `memoraweave` (or your chosen name) exists before running the command.
+
+### External / VPS PostgreSQL Setup
+
+If you are using an external PostgreSQL instance (e.g., on a VPS), the setup follows the same principles but requires a correct connection URI:
+
+1.  **Connection URI**:
+    ```env
+    POSTGRES_URI="postgres://user:password@HOST:5432/memoraweave_db?sslmode=disable"
+    ```
+2.  **Schema Separation**:
+    In the `memoraweave_db`, we use three schemas for clean separation:
+    *   **`app`**: Application-owned tables (threads, messages, events).
+    *   **`langgraph_ckpt`**: Reserved for LangGraph internal checkpoints.
+    *   **`langgraph_store`**: Reserved for LangGraph long-term memory.
+3.  **Bootstrapping**:
+    You can use the `Query Tool` in pgAdmin or run the SQL script via `psql` remotely to initialize the structures. This ensures the application layer and runtime layer stay cleanly separated from the start.

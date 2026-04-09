@@ -9,6 +9,10 @@ All notable changes to the **MemoraWeave** project will be documented in this fi
 
 --
 
+## [0.1.4] - 2026-04-09
+### Added
+- External / VPS PostgreSQL setup documentation in README.
+
 ## [0.1.3] - 2026-04-09
 ### Added
 - Application-level database schema for chat history (`chat_threads`, `chat_messages`, `chat_events`).
