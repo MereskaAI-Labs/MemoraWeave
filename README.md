@@ -284,3 +284,39 @@ If you are using an external PostgreSQL instance (e.g., on a VPS), the setup fol
     *   **`langgraph_store`**: Reserved for LangGraph long-term memory.
 3.  **Bootstrapping**:
     You can use the `Query Tool` in pgAdmin or run the SQL script via `psql` remotely to initialize the structures. This ensures the application layer and runtime layer stay cleanly separated from the start.
+
+---
+
+## Phase 3: SQLAlchemy Async Integration
+
+In this phase, we connect the FastAPI backend to our PostgreSQL database using **SQLAlchemy** with the **asyncpg** driver. This choice ensures an async end-to-end flow, which is ideal for streaming chat responses and managing multiple concurrent requests.
+
+### Key Components
+
+*   **Async Engine**: Configured in `app/db/session.py` using `create_async_engine`.
+*   **Session Management**: An `async_sessionmaker` provides isolated database sessions for each request.
+*   **Lifespan Management**: The database engine is gracefully disposed of during application shutdown.
+*   **Database Health Check**: A new endpoint `/api/v1/health/db` allows for connectivity verification.
+
+### Configuration
+
+Ensure your `.env` file contains the correct `DATABASE_URL` using the `postgresql+asyncpg` scheme:
+
+```env
+DATABASE_URL=postgresql+asyncpg://user:password@HOST:5432/memoraweave_db
+```
+
+### Verifying Connectivity
+
+You can test the database connection by running the server and hitting the following endpoint:
+
+*   **DB Health Check**: [http://127.0.0.1:8000/api/v1/health/db](http://127.0.0.1:8000/api/v1/health/db)
+
+**Example Response:**
+
+```json
+{
+  "status": "ok",
+  "database": "connected"
+}
+```

@@ -9,6 +9,13 @@ All notable changes to the **MemoraWeave** project will be documented in this fi
 
 --
 
+## [0.1.5] - 2026-04-09
+### Added
+- SQLAlchemy async integration with `asyncpg`.
+- Database session management and engine lifespan handling.
+- Database connectivity health check endpoint (`/api/v1/health/db`).
+- Phase 3 documentation in README.
+
 ## [0.1.4] - 2026-04-09
 ### Added
 - External / VPS PostgreSQL setup documentation in README.

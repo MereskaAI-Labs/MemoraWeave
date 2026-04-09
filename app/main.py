@@ -1,10 +1,10 @@
 from contextlib import asynccontextmanager
-from logging import debug
 
 from fastapi import FastAPI
 
 from app.api.v1.health import router as health_router
 from app.core.config import settings
+from app.db.session import engine
 
 
 @asynccontextmanager
@@ -17,6 +17,7 @@ async def lifespan(app: FastAPI):
     yield
 
     # nanti disini cleanup resource
+    await engine.dispose()
 
 
 app = FastAPI(
