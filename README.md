@@ -320,3 +320,26 @@ You can test the database connection by running the server and hitting the follo
   "database": "connected"
 }
 ```
+
+---
+
+## Phase 4: ORM Models and Repositories
+
+In this phase, we bridge our database schema to the application layer using SQLAlchemy ORM models and the Repository pattern. This established a robust foundation for thread and message management before moving into LangGraph integration.
+
+### Core Architecture
+
+*   **ORM Models**: Located in `app/models/`, mapping `chat_threads`, `chat_messages`, and `chat_events` using SQLAlchemy 2.0's `Mapped` syntax.
+*   **Repository Pattern**: Encapsulated database logic in `app/repositories/` to keep API endpoints clean and maintainable.
+*   **Pydantic Schemas**: Defined in `app/schemas/` for strict request validation.
+*   **Thread API**: A new router in `app/api/v1/threads.py` provides CRUD operations for conversations.
+
+### Test Workflow
+
+You can test the implementation using the Swagger Docs at [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs):
+
+1.  **Create Thread**: `POST /api/v1/threads` with a `user_id` and initial `title`.
+2.  **Add Message**: `POST /api/v1/threads/{thread_id}/messages` to simulate user or assistant inputs.
+3.  **List history**: Use `GET` endpoints to retrieve threads by user or messages by thread.
+
+This setup ensures that even as we introduce complex AI logic later, our product history remains a reliable source of truth.

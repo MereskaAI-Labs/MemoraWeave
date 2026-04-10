@@ -9,6 +9,13 @@ All notable changes to the **MemoraWeave** project will be documented in this fi
 
 --
 
+## [0.1.6] - 2026-04-10
+### Added
+- ORM models for `ChatThread`, `ChatMessage`, and `ChatEvent`.
+- Repository layer (`ThreadRepository`, `MessageRepository`, `EventRepository`) for database access.
+- API endpoints for thread management and manual message creation.
+- Phase 4 recap in README.
+
 ## [0.1.5] - 2026-04-09
 ### Added
 - SQLAlchemy async integration with `asyncpg`.
