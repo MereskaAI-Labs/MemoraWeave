@@ -343,3 +343,42 @@ You can test the implementation using the Swagger Docs at [http://127.0.0.1:8000
 3.  **List history**: Use `GET` endpoints to retrieve threads by user or messages by thread.
 
 This setup ensures that even as we introduce complex AI logic later, our product history remains a reliable source of truth.
+
+---
+
+## Phase 5: Service Layer & LangGraph Integration
+
+In this phase, we move beyond CRUD operations into a functional chat flow. We introduce a service layer to orchestrate the backend logic and integrate a minimal **LangGraph** structure for AI responses.
+
+### Key Components
+
+*   **Service Layer (`app/services/chat_service.py`)**: Centralizes the chat logic—validating threads, persisting messages, and invoking the AI graph.
+*   **LLM Factory (`app/llm/factory.py`)**: Uses LangChain's `init_chat_model` for provider-agnostic initialization (defaulting to Google Gemini).
+*   **LangGraph Integration (`app/graph/`)**: Implements a `StateGraph` that processes message history and generates assistant replies.
+*   **Chat API**: A new endpoint `POST /api/v1/chat` that accepts user input and returns the full conversational turn.
+
+### Workflow Recap
+
+1.  **Request**: Client sends `thread_id` and `message`.
+2.  **Persistence**: Backend saves the user message to `app.chat_messages`.
+3.  **Inference**: The `ChatService` invokes the graph, which calls the configured LLM.
+4.  **Completion**: The assistant's reply is automatically saved back to the database.
+5.  **Response**: Client receives the full turn (user + assistant) for UI update.
+
+### Configuration
+
+Ensure your `.env` contains:
+- `LLM_PROVIDER="google_genai"`
+- `LLM_MODEL="gemini-2.5-flash"`
+- `GOOGLE_API_KEY` or `GEMINI_API_KEY` (required for inference)
+
+### Test Command
+
+`POST /api/v1/chat`
+```json
+{
+  "thread_id": "YOUR_THREAD_UUID",
+  "user_id": "YOUR_USER_UUID",
+  "message": "Hello, how can you help me today?"
+}
+```

@@ -9,6 +9,14 @@ All notable changes to the **MemoraWeave** project will be documented in this fi
 
 --
 
+## [0.1.7] - 2026-04-12
+### Added
+- Service Layer (`ChatService`) for orchestrating conversational flows.
+- Minimal LangGraph integration with a single chatbot node.
+- Abstract LLM factory using `init_chat_model` (Gemini default).
+- Chat API endpoint `POST /api/v1/chat`.
+- Phase 5 recap in README.
+
 ## [0.1.6] - 2026-04-10
 ### Added
 - ORM models for `ChatThread`, `ChatMessage`, and `ChatEvent`.

@@ -10,10 +10,19 @@ class Settings(BaseSettings):
 
     database_url: str
 
+    google_api_key: str | None = None
+    gemini_api_key: str | None = None
+
+    llm_provider: str = "google_genai"
+    llm_model: str = "gemini-2.5-flash"
+    llm_temperature: float = 0.0
+    llm_max_tokens: int | None = 2048
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
+        extra="ignore",
     )
 
 

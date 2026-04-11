@@ -3,3 +3,7 @@ uvicorn[standard]
 pydantic-settings
 sqlalchemy
 asyncpg
+langchain
+langgraph
+langchain-google-genai
+langchain-google-vertexai
