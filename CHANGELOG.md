@@ -9,6 +9,16 @@ All notable changes to the **MemoraWeave** project will be documented in this fi
 
 --
 
+## [0.1.8] - 2026-04-12
+### Added
+- PostgreSQL checkpointer integration for persistent thread-level memory.
+- `AsyncConnectionPool` usage for the checkpointer to ensure robust connection management.
+- Dedicated `CHECKPOINTER_DB_URI` and `CHECKPOINTER_AUTO_SETUP` environment variables.
+- Phase 6 documentation in README.
+
+### Fixed
+- `OperationalError`: Fixed connection lifecycle issues where the checkpointer would attempt to use a closed connection by implementing a connection pool.
+
 ## [0.1.7] - 2026-04-12
 ### Added
 - Service Layer (`ChatService`) for orchestrating conversational flows.

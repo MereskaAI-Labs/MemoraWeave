@@ -382,3 +382,37 @@ Ensure your `.env` contains:
   "message": "Hello, how can you help me today?"
 }
 ```
+
+---
+
+## Phase 6: LangGraph Persistence (PostgreSQL Checkpointer)
+
+In this phase, we implemented persistent **short-term memory** for the AI agent using LangGraph's PostgreSQL checkpointer. This allows the assistant to maintain context across multiple turns within the same `thread_id`.
+
+### Key Enhancements
+
+*   **Persistence Layer**: Integrated `langgraph-checkpoint-postgres` to store conversational states (checkpoints) in PostgreSQL.
+*   **Robust Lifecycle Management**: Implemented `AsyncConnectionPool` from `psycopg_pool` to handle checkpointer connections reliably within the FastAPI lifespan.
+*   **Multi-turn Orchestration**: Updated `ChatService` to invoke the compiled graph with a persistent checkpointer, enabling the agent to "remember" previous interactions in the same thread.
+*   **Separated Configuration**: Added dedicated environment variables for the checkpointer URI to support different connection requirements (e.g., `psycopg` vs `asyncpg`).
+
+### Configuration Updates
+
+Ensure your `.env` includes the following for the checkpointer:
+
+```env
+CHECKPOINTER_DB_URI=postgresql://user:password@HOST:5432/memoraweave_db?sslmode=disable
+CHECKPOINTER_AUTO_SETUP=true
+```
+
+> [!TIP]
+> Use `CHECKPOINTER_AUTO_SETUP=true` on the first run to automatically create the necessary `langgraph_ckpt` tables. You can set it to `false` afterwards.
+
+### Manual Verification Workflow
+
+1.  **Create a Thread**: Use `POST /api/v1/threads` to get a new `thread_id`.
+2.  **First Message**: Send a message like "My name is Alice" to `POST /api/v1/chat`.
+3.  **Second Message**: Send a follow-up like "What is my name?" to the **same** `thread_id`.
+4.  **Expectation**: The assistant should correctly identify you as "Alice", proving that the state was successfully persisted and retrieved.
+
+This milestone ensures that MemoraWeave is no longer just a "stateless" wrapper but a truly context-aware conversational backend.

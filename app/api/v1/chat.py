@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -8,13 +8,21 @@ from app.services.chat_service import ChatService
 router = APIRouter()
 
 
+def get_chat_service(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> ChatService:
+    return ChatService(
+        db=db,
+        graph=request.app.state.graph,
+    )
+
+
 @router.post("/chat", response_model=ChatResponse, status_code=status.HTTP_200_OK)
 async def send_chat(
     payload: ChatRequest,
-    db: AsyncSession = Depends(get_db),
+    service: ChatService = Depends(get_chat_service),
 ):
-    service = ChatService(db)
-
     try:
         result = await service.send_message(
             thread_id=payload.thread_id,

@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     app_port: int = 8000
 
     database_url: str
+    checkpointer_db_uri: str
+    checkpointer_auto_setup: bool = False
 
     google_api_key: str | None = None
     gemini_api_key: str | None = None

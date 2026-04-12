@@ -6,4 +6,5 @@ asyncpg
 langchain
 langgraph
 langchain-google-genai
-langchain-google-vertexai
+langgraph-checkpoint-postgres
+psycopg[binary,pool]

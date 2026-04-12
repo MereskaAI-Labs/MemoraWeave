@@ -1,3 +1,5 @@
+from typing import Any
+
 from langchain_core.messages import AIMessage
 from langgraph.graph import END, START, StateGraph
 
@@ -19,7 +21,7 @@ async def chatbot_node(state: ChatState) -> ChatState:
     return {"messages": [AIMessage(content=assistant_text)]}
 
 
-def build_graph():
+def build_graph(*, checkpointer: Any | None = None):
     graph_builder = StateGraph(state_schema=ChatState)
 
     graph_builder.add_node("chatbot", chatbot_node)
@@ -27,4 +29,4 @@ def build_graph():
     graph_builder.add_edge(START, "chatbot")
     graph_builder.add_edge("chatbot", END)
 
-    return graph_builder.compile()
+    return graph_builder.compile(checkpointer=checkpointer)

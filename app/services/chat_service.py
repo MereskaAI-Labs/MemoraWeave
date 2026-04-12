@@ -1,6 +1,6 @@
 import uuid
+from typing import Any
 
-from app.graph.builder import build_graph
 from langchain_core.messages import HumanMessage
 
 from app.core.config import settings
@@ -9,11 +9,30 @@ from app.repositories.thread_repository import ThreadRepository
 
 
 class ChatService:
-    def __init__(self, db):
+    def __init__(self, db, graph):
         self.db = db
+        self.graph = graph
         self.thread_repo = ThreadRepository(db)
         self.message_repo = MessageRepository(db)
-        self.graph = build_graph()
+
+    def _extract_text(self, content: Any) -> str:
+        if isinstance(content, str):
+            return content
+
+        if isinstance(content, list):
+            parts: list[str] = []
+
+            for item in content:
+                if isinstance(item, str):
+                    parts.append(item)
+                elif isinstance(item, dict):
+                    text_value = item.get("text")
+                    if text_value:
+                        parts.append(str(text_value))
+
+            return "\n".join(part for part in parts if part)
+
+        return str(content or "")
 
     async def send_message(
         self,
@@ -57,7 +76,7 @@ class ChatService:
         assistant_text = ""
         if result.get("messages"):
             last_message = result["messages"][-1]
-            assistant_text = getattr(last_message, "content", "") or ""
+            assistant_text = self._extract_text(getattr(last_message, "content", ""))
 
         assistant_message = await self.message_repo.create(
             thread_id=thread_id,
