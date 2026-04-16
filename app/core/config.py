@@ -9,12 +9,20 @@ class Settings(BaseSettings):
     app_port: int = 8000
 
     database_url: str
+
+    # LangGraph short-term memory
     checkpointer_db_uri: str
     checkpointer_auto_setup: bool = False
 
+    # LangGraph long-term memory
+    store_db_uri: str
+    store_auto_setup: bool = False
+
+    # LLM configuration
     google_api_key: str | None = None
     gemini_api_key: str | None = None
 
+    # LLM
     llm_provider: str = "google_genai"
     llm_model: str = "gemini-2.5-flash"
     llm_temperature: float = 0.0

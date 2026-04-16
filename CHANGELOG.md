@@ -9,6 +9,15 @@ All notable changes to the **MemoraWeave** project will be documented in this fi
 
 --
 
+## [0.1.9] - 2026-04-16
+### Added
+- Long-term memory profile using LangGraph `AsyncPostgresStore`.
+- `GraphContext` definition to pass `user_id` context to the graph.
+- Rule-based profile extraction (`name`, `likes`, `bio`) to test profile memory mechanics.
+- `AsyncConnectionPool` utilization for the LangGraph store connection lifecycle.
+- Dedicated `STORE_DB_URI` and `LANGGRAPH_STORE_AUTO_SETUP` environment variables.
+- Phase 7A documentation in README.
+
 ## [0.1.8] - 2026-04-12
 ### Added
 - PostgreSQL checkpointer integration for persistent thread-level memory.

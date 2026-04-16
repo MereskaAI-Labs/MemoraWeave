@@ -4,6 +4,7 @@ from typing import Any
 from langchain_core.messages import HumanMessage
 
 from app.core.config import settings
+from app.graph.context import GraphContext
 from app.repositories.message_repository import MessageRepository
 from app.repositories.thread_repository import ThreadRepository
 
@@ -71,6 +72,7 @@ class ChatService:
                     "thread_id": str(thread_id),
                 },
             },
+            context=GraphContext(user_id=str(user_id)),
         )
 
         assistant_text = ""

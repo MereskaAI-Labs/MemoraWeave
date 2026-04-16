@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from langgraph.store.postgres.aio import AsyncPostgresStore
 from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
 
@@ -19,8 +20,8 @@ async def lifespan(app: FastAPI):
     # - database engine
     # - session factory
 
-    # - langgraph checkpointer
-    pool = AsyncConnectionPool(
+    # - langgraph checkpointer & store
+    checkpoint_pool = AsyncConnectionPool(
         conninfo=settings.checkpointer_db_uri,
         max_size=25,
         open=False,
@@ -31,25 +32,46 @@ async def lifespan(app: FastAPI):
         },
     )
 
-    await pool.open()
+    store_pool = AsyncConnectionPool(
+        conninfo=settings.store_db_uri,
+        max_size=25,
+        open=False,
+        kwargs={
+            "autocommit": True,
+            "prepare_threshold": 0,
+            "row_factory": dict_row,
+        },
+    )
+
+    await checkpoint_pool.open()
+    await store_pool.open()
 
     try:
-        ckpt = AsyncPostgresSaver(pool)
+        ckpt = AsyncPostgresSaver(checkpoint_pool)
+        store = AsyncPostgresStore(store_pool)
 
         if settings.checkpointer_auto_setup:
             await ckpt.setup()
 
-        ## Initialize Checkpoint Pool in State of FastAPI
-        app.state.checkpoint_pool = pool
-        ## Initialize Checkpointer in State of FastAPI
+        if settings.store_auto_setup:
+            await store.setup()
+
+        ## Initialize Checkpoint & Store Pool in State of FastAPI
+        app.state.checkpoint_pool = checkpoint_pool
+        app.state.store_pool = store_pool
+        ## Initialize Checkpointer & Store in State of FastAPI
         app.state.checkpointer = ckpt
+        app.state.store = store
         ## Initialize Graph in State of FastAPI
-        app.state.graph = build_graph(checkpointer=ckpt)
+        app.state.graph = build_graph(
+            checkpointer=ckpt,
+            store=store,
+        )
 
         yield
-    # - langgraph store
     finally:
-        await pool.close()
+        await store_pool.close()
+        await checkpoint_pool.close()
         await engine.dispose()
 
 

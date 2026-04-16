@@ -145,7 +145,7 @@ python main.py
 If the app is later exposed as a FastAPI/ASGI service, you may switch to a command like:
 
 ```bash
-uvicorn main:app --reload
+uvicorn app.main:app --reload
 ```
 
 > Use the command that matches your actual application entrypoint.
@@ -416,3 +416,33 @@ CHECKPOINTER_AUTO_SETUP=true
 4.  **Expectation**: The assistant should correctly identify you as "Alice", proving that the state was successfully persisted and retrieved.
 
 This milestone ensures that MemoraWeave is no longer just a "stateless" wrapper but a truly context-aware conversational backend.
+
+---
+
+## Phase 7A: Long-Term Memory (PostgreSQL Store)
+
+In this phase, we implemented **long-term memory** using LangGraph's PostgreSQL Store (`AsyncPostgresStore`). This allows the assistant to remember user-specific profile information across multiple conversation threads.
+
+### Key Enhancements
+
+*   **Long-Term Store Layer**: Integrated `langgraph.store.postgres.aio.AsyncPostgresStore` to persist cross-thread state.
+*   **Context Passing**: Introduced `GraphContext` to pass `user_id` natively into the LangGraph node execution.
+*   **Profile Memory Architecture**: Added a simplistic rule-based profile extractor to identify a user's name, likes, and bio from messages. The profile is saved in the store and retrieved as context for subsequent queries, regardless of the active thread.
+*   **Dual Memory Concept**: The system now seamlessly utilizes two memory layers simultaneously: short-term conversation state (`thread_id` via checkpointer) and long-term user profile context (`user_id` via store).
+
+### Configuration Updates
+
+Ensure your `.env` includes the following for the LangGraph store:
+
+```env
+STORE_DB_URI=postgresql://user:password@HOST:5432/memoraweave_db?sslmode=disable
+LANGGRAPH_STORE_AUTO_SETUP=true
+```
+
+### Manual Verification Workflow
+
+1.  **Create First Thread**: Get a `thread_id` using `POST /api/v1/threads`.
+2.  **Provide Profile Info**: Send a message like "Nama saya Budi. Saya suka kopi." (My name is Budi. I like coffee.) to `POST /api/v1/chat`. The user profile will be extracted and stored.
+3.  **Create Second Thread**: Get a new `thread_id` for the *same* `user_id`.
+4.  **Test Cross-Thread Context**: In the new thread, ask "Siapa nama saya dan apa yang saya suka?" (What is my name and what do I like?).
+5.  **Expectation**: The assistant should recall your name and preferences, demonstrating the integration of the long-term memory store across completely different conversation threads.
