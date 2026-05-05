@@ -446,3 +446,39 @@ LANGGRAPH_STORE_AUTO_SETUP=true
 3.  **Create Second Thread**: Get a new `thread_id` for the *same* `user_id`.
 4.  **Test Cross-Thread Context**: In the new thread, ask "Siapa nama saya dan apa yang saya suka?" (What is my name and what do I like?).
 5.  **Expectation**: The assistant should recall your name and preferences, demonstrating the integration of the long-term memory store across completely different conversation threads.
+
+---
+
+## Phase 7B: Semantic Long-Term Memory (Vector Search)
+
+Building upon the persistent profile store, we have now introduced **Semantic Memory** powered by vector embeddings and PostgreSQL's vector extension. This enables the assistant to dynamically search and recall past user memories based on the semantic meaning of the user's current input, scoped entirely by `user_id`.
+
+### Key Enhancements
+
+*   **Vector Embeddings**: Integrated an embedding factory (`app.embeddings`) utilizing models like Google's `gemini-embedding-2` to convert user memories into high-dimensional vector representations.
+*   **Semantic Search via LangGraph Store**: Upgraded `AsyncPostgresStore` initialization to leverage `index` configurations. We now perform semantic vector similarity search (`asearch`) on memory namespaces.
+*   **Dynamic Candidate Extraction**: Implemented a memory extractor (`app.memory.semantic_memory`) to automatically identify and isolate episodic or declarative memories from raw user inputs.
+*   **Namespace Scoping**: All memories are securely namespaced per user (`("memories", str(user_id))`) ensuring strict data isolation across conversations and users.
+*   **Tri-Layer Memory System**: MemoraWeave now leverages three distinct memory paradigms:
+    1.  **Short-term Thread Memory**: Context within a specific conversation (`checkpointer`).
+    2.  **Long-term Profile Document**: A compact, structured profile of the user (`store.aget`).
+    3.  **Long-term Semantic Memory**: A vector-searchable database of distinct memories and events (`store.asearch`).
+
+### Configuration Updates
+
+To support vector embeddings, add the following to your `.env`:
+
+```env
+EMBEDDING_MODEL=gemini-embedding-2
+EMBEDDING_DIMENSIONS=768
+```
+
+Ensure your PostgreSQL database has the `pgvector` extension enabled (LangGraph handles the vector schema setup automatically when `LANGGRAPH_STORE_AUTO_SETUP=true`).
+
+### Manual Verification Workflow
+
+1.  **Create a Thread**: Get a `thread_id` using `POST /api/v1/threads`.
+2.  **Save a Memory**: Send a message like "Tahun lalu saya pergi liburan ke Bali dan sangat menyukai pantainya." to `POST /api/v1/chat`. The system will extract this as a distinct memory candidate, embed it, and save it to the vector store.
+3.  **Create a New Thread**: Get a new `thread_id` for the *same* `user_id`.
+4.  **Recall the Memory Semantically**: In the new thread, ask "Apakah kamu ingat ke mana saya pergi liburan tahun lalu?".
+5.  **Expectation**: The assistant will perform a vector search, retrieve the semantic memory about your trip to Bali, inject it into the prompt, and accurately answer your question despite it being a completely new conversation thread.

@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-from langgraph.store.postgres.aio import AsyncPostgresStore
+from langgraph.store.postgres.aio import AsyncPostgresStore, PoolConfig
 from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
 
@@ -11,6 +11,7 @@ from app.api.v1.health import router as health_router
 from app.api.v1.threads import router as threads_router
 from app.core.config import settings
 from app.db.session import engine
+from app.embeddings.factory import build_embeddings
 from app.graph.builder import build_graph
 
 
@@ -20,7 +21,7 @@ async def lifespan(app: FastAPI):
     # - database engine
     # - session factory
 
-    # - langgraph checkpointer & store
+    # - langgraph checkpointer pool
     checkpoint_pool = AsyncConnectionPool(
         conninfo=settings.checkpointer_db_uri,
         max_size=25,
@@ -32,45 +33,54 @@ async def lifespan(app: FastAPI):
         },
     )
 
-    store_pool = AsyncConnectionPool(
-        conninfo=settings.store_db_uri,
-        max_size=25,
-        open=False,
-        kwargs={
-            "autocommit": True,
-            "prepare_threshold": 0,
-            "row_factory": dict_row,
-        },
-    )
-
     await checkpoint_pool.open()
-    await store_pool.open()
 
     try:
-        ckpt = AsyncPostgresSaver(checkpoint_pool)
-        store = AsyncPostgresStore(store_pool)
+        # - langgraph checkpointer
+        checkpointer = AsyncPostgresSaver(checkpoint_pool)
 
-        if settings.checkpointer_auto_setup:
-            await ckpt.setup()
+        # - embeddings untuk semantic search di LangGraph Store
+        embeddings = build_embeddings()
 
-        if settings.store_auto_setup:
-            await store.setup()
+        # - langgraph store
+        # pakai from_conn_string agar store bisa memakai:
+        #   - connection pooling
+        #   - index config untuk semantic/vector search
+        async with AsyncPostgresStore.from_conn_string(
+            settings.store_db_uri,
+            pool_config=PoolConfig(
+                min_size=5,
+                max_size=25,
+            ),
+            index={
+                "embed": embeddings,
+                "dims": settings.embedding_dimensions,
+                "fields": ["text"],
+            },
+        ) as store:
+            # - setup database table untuk checkpointer & store
+            if settings.checkpointer_auto_setup:
+                await checkpointer.setup()
 
-        ## Initialize Checkpoint & Store Pool in State of FastAPI
-        app.state.checkpoint_pool = checkpoint_pool
-        app.state.store_pool = store_pool
-        ## Initialize Checkpointer & Store in State of FastAPI
-        app.state.checkpointer = ckpt
-        app.state.store = store
-        ## Initialize Graph in State of FastAPI
-        app.state.graph = build_graph(
-            checkpointer=ckpt,
-            store=store,
-        )
+            if settings.langgraph_store_auto_setup:
+                await store.setup()
 
-        yield
+            # Initialize Checkpoint Pool in State of FastAPI
+            app.state.checkpoint_pool = checkpoint_pool
+
+            # Initialize Checkpointer & Store in State of FastAPI
+            app.state.checkpointer = checkpointer
+            app.state.store = store
+
+            # Initialize Graph in State of FastAPI
+            app.state.graph = build_graph(
+                checkpointer=checkpointer,
+                store=store,
+            )
+
+            yield
+
     finally:
-        await store_pool.close()
         await checkpoint_pool.close()
         await engine.dispose()
 

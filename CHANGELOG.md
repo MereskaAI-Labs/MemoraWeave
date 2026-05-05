@@ -9,6 +9,19 @@ All notable changes to the **MemoraWeave** project will be documented in this fi
 
 --
 
+## [0.1.10] - 2026-05-06
+### Added
+- Semantic Memory capabilities using LangGraph `AsyncPostgresStore` with vector indexing.
+- New `app.memory.semantic_memory` module for extracting and managing semantic memories.
+- Embeddings factory (`app.embeddings`) for vector generation.
+- Configurable `EMBEDDING_MODEL` and `EMBEDDING_DIMENSIONS` settings.
+- Integration of LangGraph store `index` configuration with PostgreSQL vector extensions.
+
+### Changed
+- Refactored `AsyncPostgresStore` initialization in `app/main.py` to use `from_conn_string` with `PoolConfig`.
+- Pinned and upgraded dependency versions in `requirements.txt` (added `langchain-google-vertexai`).
+
+
 ## [0.1.9] - 2026-04-16
 ### Added
 - Long-term memory profile using LangGraph `AsyncPostgresStore`.
