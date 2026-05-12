@@ -473,7 +473,15 @@ EMBEDDING_MODEL=gemini-embedding-2
 EMBEDDING_DIMENSIONS=768
 ```
 
-Ensure your PostgreSQL database has the `pgvector` extension enabled (LangGraph handles the vector schema setup automatically when `LANGGRAPH_STORE_AUTO_SETUP=true`).
+Ensure your PostgreSQL database has the `pgvector` extension enabled.
+
+> [!IMPORTANT]
+> **Prasyarat pgvector**: Ekstensi `pgvector` harus terinstal di level sistem operasi tempat PostgreSQL berjalan sebelum aplikasi dapat mengaktifkannya.
+> - **Ubuntu/Debian**: `sudo apt-get update && sudo apt-get install postgresql-15-pgvector` (sesuaikan versi `15` dengan versi Postgres Anda).
+> - **Docker**: Gunakan image `pgvector/pgvector:pg15` atau versi yang sesuai.
+> - **Windows**: Download binary `pgvector` dan salin ke folder `lib` dan `share/extension` PostgreSQL Anda.
+>
+> LangGraph akan mencoba menjalankan `CREATE EXTENSION IF NOT EXISTS vector` secara otomatis jika `STORE_AUTO_SETUP=true`, namun ini akan gagal jika file kontrol ekstensi belum ada di sistem.
 
 ### Manual Verification Workflow
 
