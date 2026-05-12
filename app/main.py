@@ -62,7 +62,7 @@ async def lifespan(app: FastAPI):
             if settings.checkpointer_auto_setup:
                 await checkpointer.setup()
 
-            if settings.langgraph_store_auto_setup:
+            if settings.store_auto_setup:
                 await store.setup()
 
             # Initialize Checkpoint Pool in State of FastAPI
