@@ -210,6 +210,29 @@ This repository is currently in an **early development phase**.
 The current structure serves as a foundation for future implementation and expansion.
 
 ---
+## Phase 0: Init Setup and Docker
+
+### Running the Database via Docker
+This project uses PostgreSQL with the `pgvector` extension for data and vector storage. We also provide `pgAdmin` for easy database management.
+
+Start the containers using docker-compose:
+```bash
+docker-compose up -d
+```
+
+### pgAdmin Configuration
+Once the containers are running, you can access the pgAdmin interface in your browser:
+- **URL**: [http://localhost:5050](http://localhost:5050)
+- **Email**: `admin@admin.com`
+- **Password**: `admin`
+
+The database server (`MemoraWeave DB`) is pre-configured and will automatically appear under the **Servers** group in the left sidebar. 
+When connecting to it for the first time, you will be prompted to enter the database password:
+- **Password**: `mlflow123`
+
+*(Make sure to check the "Save Password" option so you don't have to enter it again).*
+
+---
 
 ## Phase 1: Simple Application Setup
 
@@ -217,6 +240,12 @@ To start the FastAPI application for development with auto-reload enabled, run:
 
 ```bash
 uvicorn app.main:app --reload
+```
+
+or if using uv
+
+```bash
+uv run uvicorn app.main:app --reload
 ```
 
 ### Verifying the Installation

@@ -1,0 +1,13 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "MemoraWeave DB",
+      "Group": "Servers",
+      "Host": "memoraweave_postgres",
+      "Port": 5432,
+      "MaintenanceDB": "memoraweave_db",
+      "Username": "mlflow",
+      "SSLMode": "prefer"
+    }
+  }
+}
