@@ -226,11 +226,7 @@ Once the containers are running, you can access the pgAdmin interface in your br
 - **Email**: `admin@admin.com`
 - **Password**: `admin`
 
-The database server (`MemoraWeave DB`) is pre-configured and will automatically appear under the **Servers** group in the left sidebar. 
-When connecting to it for the first time, you will be prompted to enter the database password:
-- **Password**: `mlflow123`
-
-*(Make sure to check the "Save Password" option so you don't have to enter it again).*
+The database server (`MemoraWeave DB`) is fully pre-configured. It will automatically appear under the **Servers** group in the left sidebar, and you can connect to it directly without entering any passwords!
 
 ---
 

@@ -19,6 +19,8 @@ services:
       PGADMIN_DEFAULT_EMAIL: admin@admin.com
       PGADMIN_DEFAULT_PASSWORD: admin
       PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    entrypoint: /bin/sh -c "echo 'memoraweave_postgres:5432:*:mlflow:mlflow123' > /tmp/pgpass && chmod 600 /tmp/pgpass && /entrypoint.sh"
     volumes:
       - ./.docker/pgadmin/servers.json:/pgadmin4/servers.json:ro
     ports:
