@@ -220,6 +220,15 @@ Start the containers using docker-compose:
 docker-compose up -d
 ```
 
+### Automatic Database Migrations
+We have integrated an automatic SQL migration service (`memoraweave_migrate`) directly into the `docker-compose.yml`. This service runs an idempotent bash script (`app/db/run_migrations.sh`) that checks the `app/db/sql` directory and applies any `.sql` files that haven't been executed yet, tracking them in the `app.schema_migrations` table.
+
+- To see the migration logs:
+  ```bash
+  docker compose up migrate
+  ```
+- To add a new schema change, simply create a new numbered `.sql` file in `app/db/sql/` (e.g., `003_add_new_table.sql`) and run `docker compose up migrate`. The system will automatically detect and apply the new file without needing to wipe the database.
+
 ### pgAdmin Configuration
 Once the containers are running, you can access the pgAdmin interface in your browser:
 - **URL**: [http://localhost:5050](http://localhost:5050)

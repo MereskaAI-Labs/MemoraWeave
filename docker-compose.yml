@@ -18,6 +18,25 @@ services:
       retries: 10
     restart: unless-stopped
 
+  migrate:
+    image: postgres:15
+    container_name: memoraweave_migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: mlflow
+      POSTGRES_PASSWORD: mlflow123
+      POSTGRES_DB: memoraweave_db
+      MIGRATIONS_DIR: /migrations
+    volumes:
+      - ./app/db/sql:/migrations:ro
+      - ./app/db/run_migrations.sh:/run_migrations.sh:ro
+    entrypoint: ["/bin/sh", "/run_migrations.sh"]
+    restart: "no"
+
   pgadmin:
     image: dpage/pgadmin4
     container_name: memoraweave_pgadmin
