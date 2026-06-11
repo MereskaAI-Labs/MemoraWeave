@@ -8,5 +8,6 @@ Import semua model di sini supaya:
 from app.models.chat_event import ChatEvent
 from app.models.chat_message import ChatMessage
 from app.models.chat_thread import ChatThread
+from app.models.chat_request import ChatRequest
 
-__all__ = ["ChatThread", "ChatMessage", "ChatEvent"]
+__all__ = ["ChatThread", "ChatMessage", "ChatEvent", "ChatRequest"]

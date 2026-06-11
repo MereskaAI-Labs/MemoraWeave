@@ -1,3 +1,5 @@
+import hashlib
+import hashlib
 import uuid
 from typing import Any
 
@@ -6,7 +8,20 @@ from langchain_core.messages import HumanMessage
 from app.core.config import settings
 from app.graph.context import GraphContext
 from app.repositories.message_repository import MessageRepository
+from app.repositories.request_repository import RequestRepository
+from app.repositories.thread_lock_repository import ThreadLockRepository
 from app.repositories.thread_repository import ThreadRepository
+
+class ThreadNotFoundError(Exception):
+    pass
+
+
+class IdempotencyConflictError(Exception):
+    pass
+
+
+class RequestAlreadyProcessingError(Exception):
+    pass
 
 
 class ChatService:
@@ -15,6 +30,18 @@ class ChatService:
         self.graph = graph
         self.thread_repo = ThreadRepository(db)
         self.message_repo = MessageRepository(db)
+        self.request_repo = RequestRepository(db)
+        self.lock_repo = ThreadLockRepository(db)
+
+    def _make_request_hash(
+        self,
+        *,
+        thread_id: uuid.UUID,
+        user_id: uuid.UUID,
+        message_text: str
+    ) -> str:
+        raw = f"{thread_id}:{user_id}:{message_text}".encode("utf-8")
+        return hashlib.sha256(raw).hexdigest()
 
     def _extract_text(self, content: Any) -> str:
         if isinstance(content, str):
@@ -41,7 +68,11 @@ class ChatService:
         thread_id: uuid.UUID,
         user_id: uuid.UUID,
         message_text: str,
+        idempotency_key: str,
     ) -> dict:
+
+        # Lock Thread for Transaction
+        await self.lock_repo.lock_thread_for_transaction(thread_id=thread_id)
 
         thread = await self.thread_repo.get_by_id(
             thread_id=thread_id,
@@ -50,8 +81,42 @@ class ChatService:
 
         if thread is None:
             raise ValueError("Thread not found")
+        
+        request_hash = self._make_request_hash(
+            thread_id=thread_id,
+            user_id=user_id,
+            message_text=message_text
+        )
+
+        existing_request = await self.request_repo.get_by_key(
+            user_id=user_id,
+            thread_id=thread_id,
+            idempotency_key=idempotency_key
+        )
+
+        if existing_request is not None:
+            if existing_request.request_hash != request_hash:
+                raise IdempotencyConflictError(
+                    "Idempotency-Key already used for a different request"
+                )
+
+            if existing_request.status == "succeeded" and existing_request.response_json:
+                return existing_request.response_json
+
+            if existing_request.status == "started":
+                raise RequestAlreadyProcessingError(
+                    "Request is already processing or was interrupted"
+                )
 
         turn_id = uuid.uuid4()
+
+        request_record = await self.request_repo.create_started(
+            user_id=user_id,
+            thread_id=thread_id,
+            idempotency_key=idempotency_key,
+            request_hash=request_hash,
+            turn_id=turn_id
+        )
 
         user_message = await self.message_repo.create(
             thread_id=thread_id,
@@ -70,6 +135,7 @@ class ChatService:
             config={
                 "configurable": {
                     "thread_id": str(thread_id),
+                    "user_id": str(user_id),
                 },
             },
             context=GraphContext(user_id=str(user_id)),
@@ -96,13 +162,20 @@ class ChatService:
 
         await self.thread_repo.touch_last_message(thread_id=thread_id)
 
+        response_json = {
+            "thread_id": str(thread_id),
+            "turn_id": str(turn_id),
+            "user_message": user_message.content_text,
+            "assistant_message": assistant_message.content_text,
+        }
+
+        await self.request_repo.mark_succeeded(
+            request_id=request_record.id,
+            response_json=response_json,
+        )
+
         await self.db.commit()
         await self.db.refresh(user_message)
         await self.db.refresh(assistant_message)
 
-        return {
-            "thread_id": thread_id,
-            "turn_id": turn_id,
-            "user_message": user_message.content_text,
-            "assistant_message": assistant_message.content_text,
-        }
+        return response_json
