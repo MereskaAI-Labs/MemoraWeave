@@ -515,3 +515,51 @@ Ensure your PostgreSQL database has the `pgvector` extension enabled.
 3.  **Create a New Thread**: Get a new `thread_id` for the *same* `user_id`.
 4.  **Recall the Memory Semantically**: In the new thread, ask "Apakah kamu ingat ke mana saya pergi liburan tahun lalu?".
 5.  **Expectation**: The assistant will perform a vector search, retrieve the semantic memory about your trip to Bali, inject it into the prompt, and accurately answer your question despite it being a completely new conversation thread.
+
+---
+
+## Phase 8A: Basic Reliability (Thread Lock + Idempotency)
+
+As the system scales, handling concurrent requests correctly becomes crucial. In Phase 8A, we addressed two primary reliability challenges:
+1. **Concurrent User Messages**: Preventing race conditions when a user sends multiple messages rapidly in the same thread.
+2. **Client Retries**: Preventing duplicate messages and wasted LLM calls when a client retries a request due to network timeouts but the server actually succeeded.
+
+### Key Enhancements
+
+*   **Idempotency Table (`app.chat_requests`)**: Introduced a new table to track the state of incoming requests (`started`, `succeeded`, `failed`) based on a unique `Idempotency-Key` provided by the client.
+*   **Request Hashing**: Validates that if a retry occurs with the same `Idempotency-Key`, the request payload (`thread_id`, `user_id`, `message`) must perfectly match the original request.
+*   **Transaction-Level Advisory Locks**: Implemented a thread-level lock (`pg_advisory_xact_lock` via `ThreadLockRepository`) to ensure only one chat request is processed for a given `thread_id` at any time.
+*   **Replay Responses**: If a retry hits the server and the previous attempt with the same idempotency key already succeeded, the server intercepts it and directly returns the cached `response_json` without re-running LangGraph.
+
+### Configuration Updates
+
+*   The endpoint `POST /api/v1/chat` now requires the `Idempotency-Key` header.
+
+### Troubleshooting: Docker & PostgreSQL Initialization
+
+During database schema evolution, it is common to encounter issues with Docker's initialization scripts. Here are important guidelines and troubleshooting steps:
+
+**The Problem:**
+PostgreSQL's Docker image only executes scripts inside `/docker-entrypoint-initdb.d` (like `001_init_app_chat.sql` or `002_chat_request_idempotency.sql`) **once**, when the data volume (`postgres_data`) is empty. If you add a new SQL file *after* the database has been created, Docker will skip it upon restart, leading to missing tables (e.g., `relation "app.chat_requests" does not exist`).
+
+**Solutions:**
+
+1.  **Reset the database (Development Only):**
+    If data loss is acceptable, you can completely rebuild the database so all init scripts run again:
+    ```bash
+    docker compose down -v
+    docker compose up -d
+    ```
+
+2.  **Run new SQL scripts manually (Preserve Data):**
+    If you want to keep existing data, execute the new SQL file manually inside the running container.
+    *Important: If you are using Git Bash on Windows, you must prepend `MSYS_NO_PATHCONV=1` to prevent path translation errors.*
+    ```bash
+    MSYS_NO_PATHCONV=1 docker exec -it memoraweave_postgres psql -U mlflow -d memoraweave_db -f /docker-entrypoint-initdb.d/002_chat_request_idempotency.sql
+    ```
+
+3.  **Long-Term Recommendation:**
+    For production environments, do not rely on `docker-entrypoint-initdb.d` for ongoing schema changes. Implement a migration tool like **Alembic** to safely manage schema evolutions (creating new tables, adding columns) over time.
+
+**Adding Docker Healthchecks:**
+It is highly recommended to add a healthcheck to your PostgreSQL service in `docker-compose.yml` to ensure other dependent services wait until the database is fully ready to accept connections. We have updated our `docker-compose.yml` to include a healthcheck.

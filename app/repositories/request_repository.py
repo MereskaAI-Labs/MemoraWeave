@@ -43,6 +43,7 @@ class RequestRepository:
             thread_id=thread_id,
             idempotency_key=idempotency_key,
             request_hash=request_hash,
+            status="started",
             turn_id=turn_id,
         )
 
@@ -63,7 +64,7 @@ class RequestRepository:
             update(ChatRequest)
             .where(ChatRequest.id == request_id)
             .values(
-                status="succeded",
+                status="succeeded",
                 response_json=response_json,
                 updated_at=func.now()
             )

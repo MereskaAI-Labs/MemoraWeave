@@ -80,7 +80,7 @@ class ChatService:
         )
 
         if thread is None:
-            raise ValueError("Thread not found")
+            raise ThreadNotFoundError("Thread not found")
         
         request_hash = self._make_request_hash(
             thread_id=thread_id,
