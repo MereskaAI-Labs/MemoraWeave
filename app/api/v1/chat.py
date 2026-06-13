@@ -1,13 +1,14 @@
-from fastapi import Header
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import Header, APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.schemas.chat import ChatRequest, ChatResponse
-from app.services.chat_service import (
-    ChatService,
+from app.services.chat_service import ChatService
+from app.services.errors import (
+    ChatProcessingError,
     IdempotencyConflictError,
     RequestAlreadyProcessingError,
+    RequestPreviouslyFailedError,
     ThreadNotFoundError,
 )
 
@@ -42,9 +43,15 @@ async def send_chat(
 
     except ThreadNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
+
     except IdempotencyConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
+
     except RequestAlreadyProcessingError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+
+    except RequestPreviouslyFailedError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+
+    except ChatProcessingError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))

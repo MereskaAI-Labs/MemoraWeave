@@ -572,3 +572,29 @@ PostgreSQL's Docker image only executes scripts inside `/docker-entrypoint-initd
 
 **Adding Docker Healthchecks:**
 It is highly recommended to add a healthcheck to your PostgreSQL service in `docker-compose.yml` to ensure other dependent services wait until the database is fully ready to accept connections. We have updated our `docker-compose.yml` to include a healthcheck.
+
+---
+
+## Phase 8B: Error Audit & Automated Testing (Minimal)
+
+In this phase, we enhanced the reliability of the ChatService by properly handling and auditing errors, and we introduced automated testing using `pytest` to ensure core flows remain stable.
+
+### Key Enhancements
+
+*   **Error Auditing**: When LangGraph or the LLM model encounters an error, the system now:
+    *   Marks the idempotency request in `app.chat_requests` as `failed`.
+    *   Logs a structured `chat_error` event in `app.chat_events` for debugging and UI error reporting.
+*   **Structured Exceptions**: Replaced generic exceptions with specific domain errors (e.g., `ThreadNotFoundError`, `IdempotencyConflictError`, `RequestPreviouslyFailedError`, `ChatProcessingError`) to make API responses more predictable.
+*   **Fake Graph for Testing**: Created a `FakeSuccessGraph` and `FakeFailGraph` (`tests/fakes.py`) to simulate AI responses. This ensures unit tests are fast, deterministic, and don't consume real LLM API credits.
+*   **Pytest Integration**: Set up `pytest` with `pytest.mark.anyio` to test asynchronous code. The minimal test suite now verifies the success flow, idempotency logic, and failure auditing.
+
+### Running the Tests
+
+To run the test suite and verify the service logic without hitting external APIs:
+
+```bash
+pytest -q
+```
+
+**Expected Outcome:**
+You should see all tests pass successfully, confirming that the success, idempotency, and failure flows are working as expected.
