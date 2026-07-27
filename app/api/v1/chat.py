@@ -1,4 +1,5 @@
 from fastapi import Header, APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -55,3 +56,25 @@ async def send_chat(
 
     except ChatProcessingError as exc:
         raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.post("/chat/stream")
+async def stream_chat(
+    payload: ChatRequest,
+    idempotency_key: str = Header(..., alias="Idempotency-Key"),
+    service: ChatService = Depends(get_chat_service),
+):
+    return StreamingResponse(
+        service.stream_message(
+            thread_id=payload.thread_id,
+            user_id=payload.user_id,
+            message_text=payload.message,
+            idempotency_key=idempotency_key
+        ),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
