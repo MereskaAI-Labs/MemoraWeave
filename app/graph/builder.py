@@ -1,7 +1,8 @@
 from typing import Any
 
-from langchain_core.messages import SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, START, StateGraph
+from langgraph.prebuilt import ToolNode, tools_condition
 from langgraph.runtime import Runtime
 
 from app.graph.context import GraphContext
@@ -17,15 +18,46 @@ from app.memory.semantic_memory import (
     render_semantic_memories_for_prompt,
     stable_memory_key,
 )
+from app.tools.project_tools import get_project_stage
 
 llm = build_chat_model()
+
+tools = [
+    get_project_stage,
+]
+
+llm_with_tools = llm.bind_tools(tools)
 
 USER_PROFILE_NAMESPACE = ("users",)
 
 def _message_content_to_text(content: Any) -> str:
     if isinstance(content, str):
         return content
+
+    if isinstance(content, list):
+        parts: list[str] = []
+
+        for item in content:
+            if isinstance(item, str):
+                parts.append(item)
+            elif isinstance(item, dict):
+                text_value = item.get("text")
+                if text_value:
+                    parts.append(str(text_value))
+
+        return "\n".join(part for part in parts if part)
+
     return str(content or "")
+
+def _latest_human_text(messages: list[Any]) -> str:
+    for message in reversed(messages):
+        if isinstance(message, HumanMessage):
+            return _message_content_to_text(getattr(message, "content", ""))
+
+    if not messages:
+        return ""
+
+    return _message_content_to_text(getattr(messages[-1], "content", ""))
 
 
 async def chatbot_node(
@@ -43,21 +75,34 @@ async def chatbot_node(
     current_profile = profile_item.value if profile_item else {}
 
     # 2) Read current user message
-    last_message = state["messages"][-1]
-    last_text = getattr(last_message, "content", "") or ""
-    if not isinstance(last_text, str):
-        last_text = str(last_text)
+    messages = state["messages"]
+    last_message = messages[-1]
+    latest_user_text = _latest_human_text(messages)
+
+    should_write_memory = isinstance(last_message, HumanMessage)
+
+    search_text = latest_user_text or _message_content_to_text(
+        getattr(last_message, "content", "")
+    )
 
     # 3) Semantic recall from memory collection (7B)
-    memory_hits = await runtime.store.asearch(
-        memories_namespace,
-        query=last_text,
-        limit=3,
-    )
+    memory_hits = []
+    if search_text:
+        memory_hits = await runtime.store.asearch(
+            memories_namespace,
+            query=search_text,
+            limit=3,
+        )
     semantic_memories_text = render_semantic_memories_for_prompt(memory_hits)
 
     # 4) Prepare profile prompt
-    updated_profile = extract_profile_updates(last_text, current_profile)
+    if should_write_memory:
+        updated_profile = extract_profile_updates(
+            latest_user_text,
+            current_profile,
+        )
+    else:
+        updated_profile = current_profile
     profile_text = render_profile_for_prompt(updated_profile)
 
     prompt_sections: list[str] = ["You are a helpful assistant."]
@@ -77,15 +122,15 @@ async def chatbot_node(
     system_text = "\n\n".join(prompt_sections)
 
     # 5) Call model
-    response = await llm.ainvoke(
+    response = await llm_with_tools.ainvoke(
         [
             SystemMessage(content=system_text),
-            *state["messages"],
+            *messages,
         ]
     )
 
     # 6) Persist updated compact profile doc
-    if updated_profile != current_profile:
+    if should_write_memory and updated_profile != current_profile:
         await runtime.store.aput(
             USER_PROFILE_NAMESPACE,
             user_id,
@@ -94,15 +139,16 @@ async def chatbot_node(
         )
     
     # 7) Persist semantic memory items
-    memory_candidates  = extract_memory_candidates(last_text)
-    for memory in memory_candidates:
-        memory_key = stable_memory_key(memory["text"])
-        await runtime.store.aput(
-            memories_namespace,
-            memory_key,
-            memory,
-            index=["text"]
-        )
+    if should_write_memory:
+        memory_candidates = extract_memory_candidates(latest_user_text)
+        for memory in memory_candidates:
+            memory_key = stable_memory_key(memory["text"])
+            await runtime.store.aput(
+                memories_namespace,
+                memory_key,
+                memory,
+                index=["text"]
+            )
 
     return {"messages": [response]}
 
@@ -118,8 +164,20 @@ def build_graph(
     )
 
     graph_builder.add_node("chatbot", chatbot_node)
+    graph_builder.add_node("tools", ToolNode(tools))
+
     graph_builder.add_edge(START, "chatbot")
-    graph_builder.add_edge("chatbot", END)
+
+    graph_builder.add_conditional_edges(
+        "chatbot",
+        tools_condition,
+        {
+            "tools": "tools",
+            END: END,
+        },
+    )
+
+    graph_builder.add_edge("tools", "chatbot")
 
     return graph_builder.compile(
         checkpointer=checkpointer,
