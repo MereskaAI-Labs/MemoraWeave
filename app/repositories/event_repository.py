@@ -31,6 +31,24 @@ class EventRepository:
         await self.session.flush()
         return event
 
+    async def list_by_thread(
+        self,
+        *,
+        thread_id: uuid.UUID,
+        limit: int = 100,
+        offset: int = 0
+    ) -> list[ChatEvent]:
+        stmt = (
+            select(ChatEvent)
+            .where(ChatEvent.thread_id == thread_id)
+            .order_by(asc(ChatEvent.created_at))
+            .offset(offset)
+            .limit(limit)
+        )
+        result = await self.session.execute(stmt)
+        
+        return list(result.scalars().all())
+
     async def list_by_thread_turn(
         self,
         *,

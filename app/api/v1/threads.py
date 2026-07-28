@@ -25,6 +25,10 @@ from app.repositories.thread_repository import ThreadRepository
 # Schema request dari Pydantic untuk validasi body request
 from app.schemas.thread import CreateMessageRequest, CreateThreadRequest
 
+# ChatEvent model dan repository untuk event tracing
+from app.models.chat_event import ChatEvent
+from app.repositories.event_repository import EventRepository
+
 # Router untuk endpoint yang berhubungan dengan thread dan message
 router = APIRouter()
 
@@ -84,6 +88,17 @@ def serialize_message(message: ChatMessage) -> dict[str, Any]:
         "checkpoint_id": message.checkpoint_id,
         # Waktu pesan dibuat
         "created_at": message.created_at.isoformat() if message.created_at else None,
+    }
+
+def serialize_event(event: ChatEvent) -> dict[str, Any]:
+    return {
+        "id": event.id,
+        "thread_id": str(event.thread_id),
+        "turn_id": str(event.turn_id),
+        "event_type": event.event_type,
+        "node_name": event.node_name,
+        "payload": event.payload or {},
+        "created_at": event.created_at.isoformat() if event.created_at else None,
     }
 
 
@@ -284,3 +299,56 @@ async def list_messages(
 
     # Serialize semua message ke bentuk dict
     return [serialize_message(item) for item in messages]
+
+@router.get("/threads/{thread_id}/events")
+async def list_thread_events(
+    thread_id: uuid.UUID,
+    user_id: uuid.UUID = Query(...),
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+):
+    thread_repo = ThreadRepository(db)
+    event_repo = EventRepository(db)
+
+    thread = await thread_repo.get_by_id(
+        thread_id=thread_id,
+        user_id=user_id,
+    )
+
+    if thread is None:
+        raise HTTPException(status_code=404, detail="Thread not found")
+
+    events = await event_repo.list_by_thread(
+        thread_id=thread_id,
+        limit=limit,
+        offset=offset,
+    )
+
+    return [serialize_event(item) for item in events]
+
+
+@router.get("/threads/{thread_id}/turns/{turn_id}/events")
+async def list_turn_events(
+    thread_id: uuid.UUID,
+    turn_id: uuid.UUID,
+    user_id: uuid.UUID = Query(...),
+    db: AsyncSession = Depends(get_db),
+):
+    thread_repo = ThreadRepository(db)
+    event_repo = EventRepository(db)
+
+    thread = await thread_repo.get_by_id(
+        thread_id=thread_id,
+        user_id=user_id,
+    )
+
+    if thread is None:
+        raise HTTPException(status_code=404, detail="Thread not found")
+
+    events = await event_repo.list_by_thread_turn(
+        thread_id=thread_id,
+        turn_id=turn_id,
+    )
+
+    return [serialize_event(item) for item in events]
